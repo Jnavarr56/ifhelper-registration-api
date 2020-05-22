@@ -1,12 +1,8 @@
-const jwt = require("jsonwebtoken");
 const cryptoRandomString = require("crypto-random-string");
 
-require("dotenv").config();
-
-const generateSystemAuthToken = async (tokenCacheManager) => {
-	const sysAuthToken =
-		"SYS" + cryptoRandomString({ length: 10, type: "base64" });
-	const payload = { access_type: "SYSTEM" };
+const generateSystemAuthToken = async (tokenCacheManager, payloadOpts = {}) => {
+	const sysAuthToken = cryptoRandomString({ length: 10, type: "base64" });
+	const payload = { access_type: "SYSTEM", ...payloadOpts };
 
 	const { cacheError, status } = await tokenCacheManager.setKey(
 		sysAuthToken,

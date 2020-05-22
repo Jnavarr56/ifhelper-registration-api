@@ -7,14 +7,36 @@ const bodyParser = require("body-parser");
 
 const RedisCacheManager = require("./utils/RedisCacheManager");
 const { generateSystemAuthToken } = require("./utils/tokens");
-const { createUser } = require("./utils/users");
+const {
+	createUser,
+	fetchUserByEmail,
+	fetchUserById,
+	confirmUserEmail,
+	updateUserPassword
+} = require("./utils/users");
+
+const {
+	sendPasswordResetEmail,
+	sendConfirmationEmail
+} = require("./utils/email");
+
+const { signOutAllDevices } = require("./utils/auth");
 
 require("dotenv").config();
 
-const PORT = process.env.PORT || 3000;
-const REDIS_PORT = process.env.REDIS_PORT || 6379;
+const {
+	PORT: ENV_PORT,
+	REDIS_PORT: ENV_REDIS_PORT,
+	EMAIL_CONFIRMATION_JWT_SECRET_KEY,
+	PASSWORD_RESET_JWT_SECRET_KEY,
+	GMAIL_ADDRESS,
+	GMAIL_PASSWORD
+} = process.env;
 
-const USERS_API = "http://localhost:4000/users";
+const PORT = ENV_PORT || 3000;
+const REDIS_PORT = ENV_REDIS_PORT || 6379;
+
+const USERS_API = "http://localhost:5000/users";
 
 const tokenCache = new RedisCacheManager({
 	port: REDIS_PORT,
@@ -31,124 +53,23 @@ const emailConfirmationCache = new RedisCacheManager({
 	prefix: "EMAIL_CONFIRMATION"
 });
 
-const resendEmailConfirmationCache = new RedisCacheManager({
+const resendConfirmationEmailCache = new RedisCacheManager({
 	port: REDIS_PORT,
 	prefix: "EMAIL_CONFIRMATION_RESEND"
+});
+
+const sendPasswordResetEmailCache = new RedisCacheManager({
+	port: REDIS_PORT,
+	prefix: "EMAIL_RESET"
 });
 
 const transporter = nodemailer.createTransport({
 	service: "gmail",
 	auth: {
-		user: process.env.GMAIL_ADDRESS,
-		pass: process.env.GMAIL_PASSWORD
+		user: GMAIL_ADDRESS,
+		pass: GMAIL_PASSWORD
 	}
 });
-
-const EMAIL_CONFIRMATION_JWT_SECRET_KEY = "IFHELPER_EMAIL_CONFIRMATION";
-
-const sendConfirmationEmail = (user) => {
-	return new Promise((resolve, reject) => {
-		const confirmationCode = jwt.sign(
-			{ user_id: user._id },
-			EMAIL_CONFIRMATION_JWT_SECRET_KEY,
-			{ expiresIn: 60 * 60 }
-		);
-
-		const mailOptions = {
-			to: user.email,
-			subject: "IFHelper Email Confirmation",
-			html: `
-                <p>Welcome to IFHelper ${user.first_name}!</p>
-                <br />
-                <p>
-                    Click 
-                        <a href="http://localhost:${PORT}/confirm-email?code=${confirmationCode}">
-                        here
-                        </a>
-                    to confirm your email.
-                </p> 
-                <br/ >
-                <p>This code will only last for 1 hour so be quick!</p>
-            `
-		};
-
-		transporter.sendMail(mailOptions, (error, info) => {
-			if (error) {
-				reject(error);
-			} else {
-				resolve(info);
-			}
-		});
-	});
-};
-
-const fetchUserById = async (id) => {
-	// Fetch user by id.
-
-	// If no user  with id return null.
-	// If error then return formatted data object.
-
-	const token = await generateSystemAuthToken(tokenCache);
-
-	const headers = { Authorization: `Bearer ${token}` };
-
-	const APIQueryURL = `${USERS_API}/${id}`;
-	return axios
-		.get(APIQueryURL, { headers })
-		.then(({ data: { user } }) => ({ user }))
-		.catch(({ response: { data, status } }) => {
-			return {
-				error: {
-					data,
-					status,
-					error_code: data.error_code || "PROBLEM RETRIEVING USER"
-				}
-			};
-		});
-};
-
-const fetchUserByEmail = async (email) => {
-	const token = await generateSystemAuthToken(tokenCache);
-	const headers = {
-		Authorization: `Bearer ${token}`
-	};
-
-	const APIQueryURL = `${USERS_API}?email=${email}&limit=1`;
-
-	return axios
-		.get(APIQueryURL, { headers })
-		.then(({ data }) => ({ user: data.query_results[0] || null }))
-		.catch(({ response: { data, status } }) => ({
-			error: { data, status, error_code: "PROBLEM RETRIEVING USER" }
-		}));
-};
-
-const confirmUserEmail = async (id) => {
-	// If no user  with id return null.
-	// If error then return formatted data object.
-
-	const token = await generateSystemAuthToken(tokenCache);
-
-	const headers = { Authorization: `Bearer ${token}` };
-
-	const APIQueryURL = `${USERS_API}/${id}`;
-	return axios
-		.patch(APIQueryURL, { email_confirmed: true }, { headers })
-		.then(({ data: { updated_user } }) => ({ updated_user }))
-		.catch(({ response: { data, status } }) => {
-			if (status === 404) {
-				return null;
-			}
-
-			return {
-				error: {
-					data,
-					status,
-					error_code: "PROBLEM CONFIRMING USER EMAIL"
-				}
-			};
-		});
-};
 
 const app = express();
 
@@ -157,6 +78,7 @@ app
 	.use(bodyParser.json())
 	.use(morgan("dev"));
 
+//public
 app.get("/verify-email-availability", async (req, res) => {
 	const { email: emailQuery } = req.query;
 
@@ -212,6 +134,7 @@ app.get("/verify-email-availability", async (req, res) => {
 		});
 });
 
+//public
 app.post("/sign-up", async (req, res) => {
 	const { body: signUpData } = req;
 
@@ -226,7 +149,7 @@ app.post("/sign-up", async (req, res) => {
 
 	await emailAvailablityCache.deleteKey(new_user.email);
 
-	sendConfirmationEmail(new_user)
+	sendConfirmationEmail(new_user, transporter)
 		.then(() => res.send({ new_user }))
 		.catch((error) => {
 			const error_code = "PROBLEM SENDING CONFIRMATION EMAIL";
@@ -235,6 +158,7 @@ app.post("/sign-up", async (req, res) => {
 		});
 });
 
+//public
 app.post("/confirm-email", async (req, res) => {
 	const { code } = req.body;
 
@@ -271,7 +195,10 @@ app.post("/confirm-email", async (req, res) => {
 
 			const { user_id } = decodedCode;
 
-			const { user, error: userFetchError } = await fetchUserById(user_id);
+			const { user, error: userFetchError } = await fetchUserById(
+				user_id,
+				tokenCache
+			);
 
 			if (userFetchError) {
 				const { status, data: error, error_code } = userFetchError;
@@ -284,7 +211,8 @@ app.post("/confirm-email", async (req, res) => {
 			}
 
 			const { updated_user, error: userUpdateError } = await confirmUserEmail(
-				user_id
+				user_id,
+				tokenCache
 			);
 
 			if (!updated_user) {
@@ -313,6 +241,7 @@ app.post("/confirm-email", async (req, res) => {
 	);
 });
 
+//public
 app.post("/resend-confirmation-email", async (req, res) => {
 	const { email } = req.body;
 
@@ -320,13 +249,16 @@ app.post("/resend-confirmation-email", async (req, res) => {
 		return res.status(400).send({ error_code: "MISSING EMAIL" });
 	}
 
-	const { cachedVal } = await resendEmailConfirmationCache.getKey(email);
+	const { cachedVal } = await resendConfirmationEmailCache.getKey(email);
 
 	if (cachedVal) {
 		return res.status(400).send({ error_code: "THROTTLE" });
 	}
 
-	const { user, error: userFetchError } = await fetchUserByEmail(email);
+	const { user, error: userFetchError } = await fetchUserByEmail(
+		email,
+		tokenCache
+	);
 	if (!user) {
 		return res.status(400).send({ error_code: "NO USER ASSOCIATED WITH EMAIL" });
 	} else if (user.email_confirmed) {
@@ -337,9 +269,9 @@ app.post("/resend-confirmation-email", async (req, res) => {
 		return res.status(status).send({ error_code, error });
 	}
 
-	sendConfirmationEmail(user)
+	sendConfirmationEmail(user, transporter)
 		.then(async (response) => {
-			await resendEmailConfirmationCache.setKey(
+			await resendConfirmationEmailCache.setKey(
 				user.email,
 				{ sentAt: new Date() },
 				60 * 5
@@ -353,81 +285,142 @@ app.post("/resend-confirmation-email", async (req, res) => {
 		});
 });
 
-// app.get('/confirm-email', async (req, res) => {
-//     const { code } = req.query;
+//public
+app.post("/send-password-reset-email", async (req, res) => {
+	const { email } = req.body;
 
-//     if (!code) {
-//         return res.status(400).send({ error_code: "MISSING CONFIRMATION CODE" });
-//     }
+	if (!email) {
+		return res.status(400).send({ error_code: "MISSING EMAIL" });
+	}
 
-//     const { cachedVal } = await emailConfirmationCache.getKey(code);
+	const { cachedVal } = await sendPasswordResetEmailCache.getKey(email);
 
-//     if (cachedVal) {
-//         if ()
-//         return res.send(cachedVal);
-//     }
+	if (cachedVal) {
+		return res.status(400).send({ error_code: "THROTTLE" });
+	}
 
-//     jwt.verify(code, EMAIL_CONFIRMATION_JWT_SECRET_KEY, async (error, decodedCode) => {
+	const { user, error: userFetchError } = await fetchUserByEmail(
+		email,
+		tokenCache
+	);
+	if (!user) {
+		return res.status(400).send({ error_code: "NO USER ASSOCIATED WITH EMAIL" });
+	} else if (userFetchError) {
+		const { data: error, status, error_code } = userFetchError;
+		console.trace(error_code, error);
+		return res.status(status).send({ error_code, error });
+	}
 
-//         if (error) {
-//             const { name } = error;
+	sendPasswordResetEmail(user, transporter)
+		.then(async (response) => {
+			await sendPasswordResetEmailCache.setKey(
+				user.email,
+				{ sentAt: new Date() },
+				60 * 5
+			);
+			return res.send({ message: "SUCCESS" });
+		})
+		.catch((error) => {
+			console.log(error);
+			return res
+				.status(500)
+				.send({ error_code: "PROBLEM SENDING PASSWORD RESET EMAIL" });
+		});
+});
 
-// 			let error_code;
-// 			if (name === "TokenExpiredError") {
-//                 error_code = "CODE EXPIRED";
-// 			} else {
-// 				error_code = "CODE INVALID";
-//             }
+//public
+app.post("/reset-password", async (req, res) => {
+	const { code, password } = req.body;
 
-//             const dataToSend = { error_code };
+	if (!code) {
+		return res.status(400).send({ error_code: "MISSING CONFIRMATION CODE" });
+	} else if (!password) {
+		return res.status(400).send({ error_code: "MISSING NEW PASSWORD" });
+	}
 
-//             await emailConfirmationCache.setKey(code, dataToSend, 60 * 60);
+	const { cachedVal } = await sendPasswordResetEmailCache.getKey(code);
 
-// 			return res.status(401).send(dataToSend);
-//         }
+	if (cachedVal) {
+		return res.status(400).send(cachedVal);
+	}
 
-//         const { user_id } = decodedCode;
+	jwt.verify(code, PASSWORD_RESET_JWT_SECRET_KEY, async (error, decodedCode) => {
+		if (error) {
+			const { name } = error;
 
-//         const {
-//             user,
-//             error: userFetchError
-//         } = await fetchUserById(user_id);
+			let error_code;
+			if (name === "TokenExpiredError") {
+				error_code = "CODE EXPIRED";
+			} else {
+				error_code = "CODE INVALID";
+			}
 
-//         if (!user) {
-//             return res.status(400).send({ error_code: "USER DOES NOT EXIST" });
-//         } else if (userFetchError){
-//             const { status, data: error, error_code } = userFetchError;
-//             console.trace(error_code, error);
-//             return res.status(status).send({ error_code, error });
-//         }
+			const dataToSend = { error_code };
 
-//         if (user.email_confirmed) {
-//             return res.status(400).send({ error_code: "EMAIL ALREADY CONFIRMED" });
-//         }
+			await sendPasswordResetEmailCache.setKey(code, dataToSend, 60 * 15);
 
-//         const {
-//             updated_user,
-//             error: userUpdateError
-//         } = await confirmUserEmail(user_id);
+			return res.status(401).send(dataToSend);
+		}
 
-//         if (!updated_user) {
-//             return res.status(400).send({ error_code: "USER DOES NOT EXIST" });
-//         } else if (userUpdateError) {
-//             const { status, data: error, error_code } = userUpdateError;
-//             console.trace(error_code, error);
-//             return res.status(status).send({ error_code, error });
-//         }
+		const { user_id } = decodedCode;
 
-//         await emailConfirmationCache.setKey(code, dataToSend, 60 * 60);
+		const { user, error: userFetchError } = await fetchUserById(
+			user_id,
+			tokenCache
+		);
 
-//         return res.send({message: "SUCCESSFULLY CONFIRMED EMAIL" });
+		if (userFetchError) {
+			const { status, data: error, error_code } = userFetchError;
+			console.trace(error_code, error);
+			return res.status(status).send({ error_code: "PROBLEM RETRIEVING USER" });
+		}
 
-//     });
-// });
+		const { updated_user, error: userUpdateError } = await updateUserPassword(
+			user_id,
+			password,
+			tokenCache
+		);
+
+		if (!updated_user) {
+			return res.status(400).send({ error_code: "USER DOES NOT EXIST" });
+		} else if (userUpdateError) {
+			const { status, data: error, error_code } = userUpdateError;
+			console.trace(error_code, error);
+			return res.status(status).send({ error_code, error });
+		}
+
+		await sendPasswordResetEmailCache.setKey(
+			code,
+			{ message: "PASSWORD ALREADY UPDATED" },
+			60 * 15
+		);
+
+		try {
+			await signOutAllDevices(updated_user._id, tokenCache);
+		} catch (error) {
+			const { data, status } = error.response;
+			console.log(data, status);
+			return res
+				.status(500)
+				.send({ error_code: "PROBLEM INVALIDATING OTHER SESSIONS" });
+		}
+
+		return res.send({
+			message: "SUCCESSFULLY UPDATED PASSWORD",
+			user: {
+				email: user.email,
+				first_name: user.first_name,
+				last_name: user.last_name
+			}
+		});
+	});
+});
 
 (async () => {
 	await emailAvailablityCache.deleteAllKeys();
 	await emailConfirmationCache.deleteAllKeys();
+	await resendConfirmationEmailCache.deleteAllKeys();
+	await sendPasswordResetEmailCache.deleteAllKeys();
 
 	app.listen(PORT, () => {
 		console.log(`Registration API running on port ${PORT}!`);
