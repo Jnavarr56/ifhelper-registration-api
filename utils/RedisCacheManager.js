@@ -15,38 +15,53 @@ class RedisCacheManager {
 	}
 
 	setKey(key, payload, secs) {
-		return new Promise((resolve) => {
+		return new Promise((resolve, reject) => {
 			this.redisClient.set(
 				key,
 				JSON.stringify(payload),
 				"EX",
 				secs,
-				(cacheError, status) => resolve({ cacheError, status })
+				(cacheError) => {
+					if (cacheError) reject(cacheError);
+					resolve()
+				}
 			);
 		});
 	}
 
 	getKey(key) {
-		return new Promise((resolve) => {
+		return new Promise((resolve, reject) => {
 			this.redisClient.get(key, (cacheError, cachedVal) => {
-				resolve({ cacheError, cachedVal: JSON.parse(cachedVal) });
+				if (cacheError) reject(cacheError);
+				resolve(JSON.parse(cachedVal));
 			});
 		});
 	}
 
 	deleteKey(key) {
-		return new Promise((resolve) => {
-			this.redisClient.del(key, (err, n) => resolve(n));
+		return new Promise((resolve, reject) => {
+			this.redisClient.del(key, (err, n) => {
+				if (err) reject(err);
+				resolve(n)
+			});
 		});
 	}
 
 	deleteAllKeys() {
-		return new Promise((resolve) => {
+		return new Promise((resolve, reject) => {
 			this.redisClient.keys(this.opts.prefix + "*", (err, rows) => {
-				this.redisClient.del(
-					rows.map((row) => row.replace(this.opts.prefix, "")),
-					(err, n) => resolve(n)
-				);
+				if (err) reject(err);
+				if (rows.length > 0) {
+					this.redisClient.del(
+						rows.map((row) => row.replace(this.opts.prefix, "")),
+						(err) => {
+							if (err) reject(err);
+							resolve();		
+						}
+					);
+				} else {
+					resolve();
+				}
 			});
 		});
 	}
