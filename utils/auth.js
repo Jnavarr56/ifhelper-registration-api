@@ -1,12 +1,6 @@
 const axios = require("axios");
 const { generateSystemAuthToken } = require("./tokens");
-
-require("dotenv").config();
-
-const {
-	AUTH_API = `http://server/api/authentication`
-} = process.env;
-
+const { AUTH_API } = require('../vars');
 
 const signOutAllDevices = async (user_id, tokenCache) => {
 	const token = await generateSystemAuthToken(tokenCache, {

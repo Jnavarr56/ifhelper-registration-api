@@ -4,7 +4,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const bodyParser = require("body-parser");
-
+const cors = require('cors');
 const RedisCacheManager = require("./utils/RedisCacheManager");
 const { generateSystemAuthToken } = require("./utils/tokens");
 const {
@@ -25,22 +25,15 @@ const { signOutAllDevices } = require("./utils/auth");
 require("dotenv").config();
 
 const {
-	PORT: ENV_PORT,
-	REDIS_PORT: ENV_REDIS_PORT,
 	EMAIL_CONFIRMATION_JWT_SECRET_KEY,
 	PASSWORD_RESET_JWT_SECRET_KEY,
 	GMAIL_ADDRESS,
-	GMAIL_PASSWORD,
-	REDIS_URL,
-	USERS_API = 'http://server/api/users'
+	GMAIL_PASSWORD
 } = process.env;
 
-const PORT = ENV_PORT || 3000;
-const REDIS_PORT = ENV_REDIS_PORT || 6379;
+const { PORT, REDIS_PORT, REDIS_URL, USERS_API, PATHNAME } = require('./vars');
 
-const API_BASE_URL = typeof process.env.API_BASE_URL === "string" ? process.env.API_BASE_URL : "/api";
-const PATHNAME = "/registration";
-const API_NAME = API_BASE_URL + PATHNAME;
+
 
 const tokenCache = new RedisCacheManager({
 	port: REDIS_PORT,
@@ -81,14 +74,22 @@ const transporter = nodemailer.createTransport({
 });
 
 const app = express();
+const corsOpts = {
+	credentials: true,
+	origin: 'http://localhost:3000',
+	allowedHeaders: ['Access-Control-Allow-Credentials', 'Authorization', 'Content-Type']
+};
 
 app
 	.use(bodyParser.urlencoded({ extended: true }))
 	.use(bodyParser.json())
-	.use(morgan("dev"));
+	.use(morgan("dev"))
+	.use(cors(corsOpts));
+
+app.options('*', cors(corsOpts));
 
 //public
-app.get(API_NAME + "/verify-email-availability", async (req, res) => {
+app.get(`${PATHNAME}/verify-email-availability`, async (req, res) => {
 	const { email: emailQuery } = req.query;
 
 	if (!emailQuery) {
@@ -115,7 +116,7 @@ app.get(API_NAME + "/verify-email-availability", async (req, res) => {
 });
 
 //public
-app.post(API_NAME + "/sign-up", async (req, res) => {
+app.post(`${PATHNAME}/sign-up`, async (req, res) => {
 	const { body: signUpData } = req;
 
 	
@@ -137,7 +138,7 @@ app.post(API_NAME + "/sign-up", async (req, res) => {
 });
 
 //public
-app.post(API_NAME + "/confirm-email", async (req, res) => {
+app.post(`${PATHNAME}/confirm-email`, async (req, res) => {
 	const { code } = req.body;
 
 	if (!code) {
@@ -188,7 +189,7 @@ app.post(API_NAME + "/confirm-email", async (req, res) => {
 });
 
 //public
-app.post(API_NAME + "/resend-confirmation-email", async (req, res) => {
+app.post(`${PATHNAME}/resend-confirmation-email`, async (req, res) => {
 	const { email } = req.body;
 
 	if (!email) {
@@ -225,7 +226,7 @@ app.post(API_NAME + "/resend-confirmation-email", async (req, res) => {
 });
 
 //public
-app.post(API_NAME + "/send-password-reset-email", async (req, res) => {
+app.post(`${PATHNAME}/send-password-reset-email`, async (req, res) => {
 	const { email } = req.body;
 
 	if (!email) {
@@ -260,7 +261,7 @@ app.post(API_NAME + "/send-password-reset-email", async (req, res) => {
 });
 
 //public
-app.post(API_NAME + "/reset-password", async (req, res) => {
+app.post(`${PATHNAME}/reset-password`, async (req, res) => {
 	const { code, password } = req.body;
 
 	if (!code) {
@@ -283,7 +284,7 @@ app.post(API_NAME + "/reset-password", async (req, res) => {
 		}
 
 		const { user_id } = decodedCode;
-		const user = await fetchUserById(user, tokenCache);
+		const user = await fetchUserById(user_id, tokenCache);
 		const updatedUser = await updateUserPassword(user_id, password, tokenCache);
 
 		if (!updatedUser) {
@@ -291,7 +292,7 @@ app.post(API_NAME + "/reset-password", async (req, res) => {
 		}
 
 		await sendPasswordResetEmailCache.setKey(code, { error_code: "PASSWORD ALREADY UPDATED" }, 60 * 15);
-		await signOutAllDevices(updated_user._id, tokenCache);
+		await signOutAllDevices(updatedUser._id, tokenCache);
 		
 		return res.send({
 			message: "SUCCESSFULLY UPDATED PASSWORD",

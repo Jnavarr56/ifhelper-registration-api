@@ -12,4 +12,4 @@ COPY package.json /app/registration-api/package.json
 RUN npm install
 
 # wait for database then start app
-CMD ["/app/wait-for-it.sh", "authentication-api:3000", "--", "npm", "run", "dev"]
+CMD ["/app/wait-for-it.sh", "authentication-api:80", "--", "npm", "run", "dev"]
