@@ -1,8 +1,8 @@
-const axios = require("axios");
-const { generateSystemAuthToken } = require("./tokens");
+const axios = require('axios');
+const { generateSystemAuthToken } = require('./tokens');
 const { USERS_API } = require('../vars');
 
-require("dotenv").config();
+require('dotenv').config();
 
 const createUser = async (signUpData, tokenCache) => {
 	const token = await generateSystemAuthToken(tokenCache);
@@ -10,7 +10,7 @@ const createUser = async (signUpData, tokenCache) => {
 
 	return axios
 		.post(USERS_API, signUpData, { headers })
-		.then(({ data: { new_user } }) => new_user)
+		.then(({ data: { new_user } }) => new_user);
 };
 
 const fetchUserById = async (id, tokenCache) => {
@@ -21,8 +21,8 @@ const fetchUserById = async (id, tokenCache) => {
 	return axios
 		.get(APIQueryURL, { headers })
 		.then(({ data: user }) => user)
-		.catch(error => {
-			const { status, data }= error;
+		.catch((error) => {
+			const { status, data } = error;
 			if (status === 404) {
 				return null;
 			} else {
@@ -48,9 +48,9 @@ const confirmUserEmail = async (id, tokenCache) => {
 
 	return new Promise((resolve, reject) => {
 		axios
-		.patch(APIQueryURL, { email_confirmed: true }, { headers })
-		.then(({ data: { updated_user } }) => resolve(updated_user))
-		.catch(error => reject(error));
+			.patch(APIQueryURL, { email_confirmed: true }, { headers })
+			.then(({ data: { updated_user } }) => resolve(updated_user))
+			.catch((error) => reject(error));
 	});
 };
 
@@ -62,7 +62,7 @@ const updateUserPassword = async (id, password, tokenCache) => {
 	return axios
 		.patch(APIQueryURL, { password }, { headers })
 		.then(({ data: { updated_user } }) => updated_user)
-		.catch(error => {
+		.catch((error) => {
 			if (error.response.status === 404) {
 				return null;
 			}

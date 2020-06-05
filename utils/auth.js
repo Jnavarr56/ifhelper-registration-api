@@ -1,5 +1,5 @@
-const axios = require("axios");
-const { generateSystemAuthToken } = require("./tokens");
+const axios = require('axios');
+const { generateSystemAuthToken } = require('./tokens');
 const { AUTH_API } = require('../vars');
 
 const signOutAllDevices = async (user_id, tokenCache) => {
@@ -8,7 +8,7 @@ const signOutAllDevices = async (user_id, tokenCache) => {
 	});
 
 	const headers = { Authorization: `Bearer ${token}` };
-	const postURL = AUTH_API + "/sign-out-all-devices";
+	const postURL = AUTH_API + '/sign-out-all-devices';
 
 	return axios.post(postURL, {}, { headers });
 };
