@@ -1,5 +1,5 @@
 import * as a from 'amqplib';
-import { RABBIT_MQ_URL } from '../vars';
+import { RABBIT_MQ_URL, AUTHORIZATION_QUEUE_NAME } from '../vars';
 import * as e from 'events';
 
 export default class RabbitMQAuthMessenger {
@@ -47,7 +47,7 @@ export default class RabbitMQAuthMessenger {
 			);
 
 			RabbitMQAuthMessenger.channel.sendToQueue(
-				'authorization_queue',
+				AUTHORIZATION_QUEUE_NAME,
 				new Buffer(''),
 				{
 					correlationId,

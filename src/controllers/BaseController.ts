@@ -123,6 +123,10 @@ export default abstract class BaseController {
 		BaseController.jsonErrorResponse(res, 404, errorCode);
 	}
 
+	public gone(res: e.Response, errorCode?: string): void {
+		BaseController.jsonErrorResponse(res, 410, errorCode);
+	}
+
 	public fail(res: e.Response, error: Error): void {
 		BaseController.jsonErrorResponse(
 			res,
