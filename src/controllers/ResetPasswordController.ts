@@ -15,9 +15,12 @@ export default class ResetPasswordController extends BaseController {
 		const password: string | undefined = req.body.password;
 		if (!code || !password) return this.missingParams(res, ['code', 'password']);
 
-		// 2) attempt to decode the code to obtain the relevant user id in the payload.
-		let codePayload: PasswordResetPayload;
+		// 2) set aside to hold contents of payload in case manual decode needed.
+		let codePayload: PasswordResetPayload | undefined;
+		// 3) set aside to hold string id of user we will query.
+		let userToResetID: string | undefined;
 
+		// 4) check cache for code.
 		try {
 			codePayload = await ResetPasswordController.passwordResetEmailer.decode(
 				code

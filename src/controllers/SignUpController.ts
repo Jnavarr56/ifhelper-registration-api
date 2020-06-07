@@ -28,12 +28,14 @@ export default class SignUpController extends BaseController {
 			return;
 		}
 
-		// 3) Send confirmation code email.
+		// 3) send confirmation code email.
 		new ConfirmationEmailer()
 			.sendEmail(newUser)
 			.then(async (confirmationCode: string) => {
+				// send 200 upon email receipt.
 				this.ok(res);
 
+				// cache the code for 15 mins to speed up the decoding process.
 				const cache: RedisManager = new RedisManager(EMAIL_CONFIRMATION_KEY_PREFIX);
 				cache.setKey(confirmationCode, newUser.getFields()._id, 60 * 15);
 			})
