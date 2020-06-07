@@ -18,7 +18,7 @@ export default abstract class Emailer {
 		}
 	});
 
-	public abstract async sendEmail(user: User): Promise<void>;
+	public abstract async sendEmail(user: User): Promise<string>;
 	public abstract async decode(code: string): Promise<CodePayload>;
 
 	private static isCodePayload(val: unknown): val is CodePayload {
@@ -35,7 +35,7 @@ export default abstract class Emailer {
 		secret: string,
 		expiresIn: number
 	): Promise<string> {
-		const options: jwt.SignOptions = { expiresIn };
+		const options: jwt.SignOptions = { expiresIn, mutatePayload: true };
 		return new Promise((resolve, reject) => {
 			jwt.sign(
 				payload,

@@ -1,5 +1,3 @@
-import e from 'express';
-import * as dotenv from 'dotenv';
 import axios, { AxiosError } from 'axios';
 import RabbitMQAuthMessenger from '../utils/RabbitMQAuthMessenger';
 
@@ -18,7 +16,6 @@ import { USERS_API } from '../vars';
 
 export default class User {
 	private user: UserFields | null = null;
-	private static authTokenGenerator: RabbitMQAuthMessenger = new RabbitMQAuthMessenger();
 
 	public exists(): boolean {
 		return this.user !== null;
@@ -35,7 +32,7 @@ export default class User {
 	}
 
 	private async generateAuthorizedConfig(): Promise<AuthorizedConfig> {
-		const token = await User.authTokenGenerator.requestAuthorizationToken();
+		const token = await RabbitMQAuthMessenger.requestAuthorizationToken();
 		const config: AuthorizedConfig = {
 			headers: { Authorization: `Bearer ${token}` }
 		};
@@ -78,7 +75,7 @@ export default class User {
 	}
 
 	public async initByID(id: string): Promise<void> {
-		const config: AuthorizedConfig = await await this.generateAuthorizedConfig();
+		const config: AuthorizedConfig = await this.generateAuthorizedConfig();
 		const queryURL = `${USERS_API}/${id}`;
 
 		return axios

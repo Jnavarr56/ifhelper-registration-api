@@ -7,18 +7,19 @@ import User from '../utils/User';
 import BaseController from './BaseController';
 import { PasswordResetPayload } from '../types/Token';
 
-export default class TestPasswordResetCodeController extends BaseController {
+export default class ResetPasswordController extends BaseController {
 	private static passwordResetEmailer: PasswordResetEmailer = new PasswordResetEmailer();
 	protected async executeImpl(req: e.Request, res: e.Response): Promise<void> {
-		// 1) make sure code paramater is in request and reject with 400 if not.
-		const code: unknown = req.query.code;
-		if (typeof code !== 'string') return this.missingParams(res, 'code');
+		// 1) make sure code paramater and password parameter are in request and reject with 400 if not.
+		const code: string | undefined = req.body.code;
+		const password: string | undefined = req.body.password;
+		if (!code || !password) return this.missingParams(res, ['code', 'password']);
 
 		// 2) attempt to decode the code to obtain the relevant user id in the payload.
 		let codePayload: PasswordResetPayload;
 
 		try {
-			codePayload = await TestPasswordResetCodeController.passwordResetEmailer.decode(
+			codePayload = await ResetPasswordController.passwordResetEmailer.decode(
 				code
 			);
 		} catch (error) {
@@ -38,10 +39,13 @@ export default class TestPasswordResetCodeController extends BaseController {
 		const user: User = new User();
 		await user.initByID(codePayload._id);
 
-		// 4) 404 if user doesn't exist.
+		// 4) 404 if user doesn't exit.
 		if (!user.exists()) return this.notFound(res);
 
-		// 5) if it went well then return with a 200.
-		this.ok(res);
+		// 6) attempt to reset user password.
+		await user.update({ password });
+
+		// 7) if it went well then return with a 200.
+		this.ok(res, { first_name: user.getFields().first_name });
 	}
 }

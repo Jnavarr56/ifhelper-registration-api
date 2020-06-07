@@ -2,49 +2,87 @@ import * as e from 'express';
 import * as jwt from 'jsonwebtoken';
 
 import ConfirmationEmailer from '../utils/ConfirmationEmailer';
+import RedisManager from '../utils/RedisManager';
 import User from '../utils/User';
 
 import BaseController from './BaseController';
 import { ConfirmationCodePayload } from '../types/Token';
 
+import {
+	EMAIL_CONFIRMATION_CODE_TTL_SECS,
+	EMAIL_CONFIRMATION_KEY_PREFIX
+} from '../vars';
+
 export default class ConfirmEmailController extends BaseController {
 	protected async executeImpl(req: e.Request, res: e.Response): Promise<void> {
-		// 1) make sure code paramater is in request and reject with 400 if not.
-		const code: unknown = req.query.code;
+		const code: string | undefined = req.body.code;
 		if (typeof code !== 'string') return this.missingParams(res, 'code');
 
-		// 2) attempt to decode the code to obtain the relevant user id in the payload.
-		let codePayload: ConfirmationCodePayload;
+		let userToConfirmID: string | undefined;
 
-		try {
-			codePayload = await new ConfirmationEmailer().decode(code);
-		} catch (error) {
-			if (error instanceof jwt.TokenExpiredError) {
-				// if code (token) expired than return 410.
-				return this.gone(res);
-			} else if (error instanceof jwt.JsonWebTokenError) {
-				// if there was any other reason the jwt is invalid then return 404.
-				return this.notFound(res);
+		let decodedPayload: ConfirmationCodePayload | undefined;
+
+		const cache: RedisManager = new RedisManager(EMAIL_CONFIRMATION_KEY_PREFIX);
+		const cachedValue: string | null = await cache.getKey(code);
+
+		if (cachedValue) {
+			const cachedValueNumber = Number(cachedValue);
+			if (cachedValueNumber) {
+				if (cachedValueNumber === 404) this.notFound(res);
+				else if (cachedValueNumber === 409) this.conflict(res);
+				else if (cachedValueNumber === 410) this.gone(res);
+				else this.fail(res, new Error());
+				return;
 			}
-			// any other error would be an unknown issue so return 500.
-			return this.fail(res, error);
+
+			userToConfirmID = cachedValue;
+		} else {
+			try {
+				const decoder: ConfirmationEmailer = new ConfirmationEmailer();
+				decodedPayload = await decoder.decode(code);
+				userToConfirmID = decodedPayload._id;
+			} catch (error) {
+				let errorToCache: number | undefined;
+
+				if (error instanceof jwt.TokenExpiredError) {
+					errorToCache = 410;
+					this.gone(res);
+				} else if (error instanceof jwt.JsonWebTokenError) {
+					errorToCache = 404;
+					this.notFound(res);
+				} else {
+					errorToCache = 500;
+					this.fail(res, error);
+				}
+				cache.setKey(code, errorToCache.toString(), 60 * 5);
+				return;
+			}
 		}
 
-		// 3) attempt to locate the user that matches the id in the code
-		// payload.
 		const user: User = new User();
-		await user.initByID(codePayload._id);
+		await user.initByID(userToConfirmID);
 
-		// 4) 404 if user doesn't exit, 409 if user already confirmed.
-		if (!user.exists()) return this.notFound(res);
-		if (user.isConfirmed()) return this.conflict(res);
+		if (!user.exists()) {
+			this.notFound(res);
+			cache.setKey(code, '404', 60 * 5);
+			return;
+		}
 
-		// 5) if user exists and isn't already confirmed attempt to
-		// confirm them.
+		if (user.isConfirmed()) {
+			this.conflict(res);
+			cache.setKey(code, '409', 60 * 5);
+			return;
+		}
+
 		await user.update({ email_confirmed: true });
-
-		// 6) if it went well then send back the user's first name
-		// with a 200.
 		this.ok(res, { first_name: user.getFields().first_name });
+
+		let ttl: number | undefined;
+		if (decodedPayload) {
+			ttl = Math.ceil(decodedPayload.exp - new Date().getTime() / 1000);
+		} else ttl = EMAIL_CONFIRMATION_CODE_TTL_SECS;
+
+		cache.setKey(code, '410', ttl);
+		cache.deleteKey(user.getFields().email);
 	}
 }

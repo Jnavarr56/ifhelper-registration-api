@@ -4,6 +4,7 @@ import ResendConfirmationEmailController from './controllers/ResendConfirmationE
 import ConfirmEmailController from './controllers/ConfirmEmailController';
 import SendPasswordResetEmailController from './controllers/SendPasswordResetEmailController';
 import TestPasswordResetCodeController from './controllers/TestPasswordResetCodeController';
+import ResetPasswordController from './controllers/ResetPasswordController';
 
 const router: e.Router = e.Router();
 
@@ -15,7 +16,7 @@ router.post('/resend-confirmation-email', (req: e.Request, res: e.Response) =>
 	new ResendConfirmationEmailController().execute(req, res)
 );
 
-router.get('/confirm-email', (req: e.Request, res: e.Response) =>
+router.post('/confirm-email', (req: e.Request, res: e.Response) =>
 	new ConfirmEmailController().execute(req, res)
 );
 
@@ -25,6 +26,10 @@ router.post('/send-password-reset-email', (req: e.Request, res: e.Response) =>
 
 router.get('/test-password-reset-code', (req: e.Request, res: e.Response) =>
 	new TestPasswordResetCodeController().execute(req, res)
+);
+
+router.post('/reset-password', (req: e.Request, res: e.Response) =>
+	new ResetPasswordController().execute(req, res)
 );
 
 export default router;

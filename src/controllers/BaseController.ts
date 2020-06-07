@@ -112,11 +112,11 @@ export default abstract class BaseController {
 	}
 
 	public forbidden(res: e.Response, errorCode?: string): void {
-		BaseController.jsonResponse(res, 403, errorCode);
+		BaseController.jsonErrorResponse(res, 403, errorCode);
 	}
 
 	public conflict(res: e.Response, errorCode?: string): void {
-		BaseController.jsonResponse(res, 409, errorCode);
+		BaseController.jsonErrorResponse(res, 409, errorCode);
 	}
 
 	public notFound(res: e.Response, errorCode?: string): void {
@@ -125,6 +125,10 @@ export default abstract class BaseController {
 
 	public gone(res: e.Response, errorCode?: string): void {
 		BaseController.jsonErrorResponse(res, 410, errorCode);
+	}
+
+	public tooManyRequests(res: e.Response, errorCode?: string): void {
+		BaseController.jsonErrorResponse(res, 429, errorCode);
 	}
 
 	public fail(res: e.Response, error: Error): void {

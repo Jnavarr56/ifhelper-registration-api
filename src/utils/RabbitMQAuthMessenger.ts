@@ -1,6 +1,6 @@
 import * as a from 'amqplib';
-import { RABBIT_MQ_URL, AUTHORIZATION_QUEUE_NAME } from '../vars';
 import * as e from 'events';
+import { RABBIT_MQ_URL, AUTHORIZATION_QUEUE_NAME } from '../vars';
 
 export default class RabbitMQAuthMessenger {
 	private static channel: a.Channel | null = null;
@@ -30,7 +30,7 @@ export default class RabbitMQAuthMessenger {
 		}
 	}
 
-	public async requestAuthorizationToken(): Promise<string> {
+	public static async requestAuthorizationToken(): Promise<string> {
 		return new Promise((resolve, reject) => {
 			if (!RabbitMQAuthMessenger.channel || !RabbitMQAuthMessenger.queue) {
 				return reject('No Channel Initialized');

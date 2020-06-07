@@ -28,13 +28,13 @@ export default class PasswordResetEmailer extends Emailer {
 		return secret;
 	}
 
-	public async sendEmail(user: User): Promise<void> {
+	public async sendEmail(user: User): Promise<string> {
 		const userFields: UserFields = user.getFields();
 
 		const userID: string = userFields._id;
 		const userEmail: string = userFields.email;
 
-		const payload: PasswordResetPayload = {
+		const payload: CodePayload = {
 			_id: userID,
 			type: 'PASSWORD_RESET'
 		};
@@ -60,15 +60,19 @@ export default class PasswordResetEmailer extends Emailer {
 				},
 				(error: Error | null, info: SendMailResponse) => {
 					if (error) reject(error);
-					if (info.accepted.includes(userEmail)) resolve();
-					reject(new Error('Problem Sending Email'));
+					if (info.accepted.includes(userEmail)) resolve(code);
+					reject(new Error('No Acccepted Receipt'));
 				}
 			);
 		});
 	}
 
 	private isPasswordResetPayload(val: CodePayload): val is PasswordResetPayload {
-		return val.type === 'PASSWORD_RESET';
+		return (
+			val.type === 'PASSWORD_RESET' &&
+			typeof (val as PasswordResetPayload).exp === 'number' &&
+			typeof (val as PasswordResetPayload).iat === 'number'
+		);
 	}
 	public async decode(code: string): Promise<PasswordResetPayload> {
 		const secret: string = this.getSecret();
