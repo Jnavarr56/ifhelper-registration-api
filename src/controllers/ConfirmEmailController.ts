@@ -1,9 +1,9 @@
 import * as e from 'express';
 import * as jwt from 'jsonwebtoken';
 
-import ConfirmationEmailer from '../utils/ConfirmationEmailer';
-import RedisManager from '../utils/RedisManager';
-import User from '../utils/User';
+import ConfirmationEmailer from '../util/ConfirmationEmailer';
+import RedisManager from '../util/RedisManager';
+import User from '../util/User';
 
 import BaseController from './BaseController';
 import { ConfirmationCodePayload } from '../types/Token';
@@ -32,7 +32,6 @@ export default class ConfirmEmailController extends BaseController {
 		const cachedValue: string | null = await cache.getKey(code);
 
 		if (cachedValue) {
-			console.log('as');
 			// 5) if in cache, see if is any of these numbers, in which case
 			// it represents an error code. respond with that code.
 			if (Number(cachedValue)) {
@@ -45,7 +44,6 @@ export default class ConfirmEmailController extends BaseController {
 
 			userToConfirmID = cachedValue;
 		} else {
-			console.log('as]bbb');
 			// 5) try to decode token manually. if successful, then
 			// extract _id property and use it as the id to query
 			// the users api.

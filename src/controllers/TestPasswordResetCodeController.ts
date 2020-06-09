@@ -1,17 +1,14 @@
 import * as e from 'express';
 import * as jwt from 'jsonwebtoken';
 
-import PasswordResetEmailer from '../utils/PasswordResetEmailer';
-import RedisManager from '../utils/RedisManager';
-import User from '../utils/User';
+import PasswordResetEmailer from '../util/PasswordResetEmailer';
+import RedisManager from '../util/RedisManager';
+import User from '../util/User';
 
 import BaseController from './BaseController';
 import { PasswordResetPayload } from '../types/Token';
 
-import {
-	PASSWORD_RESET_KEY_PREFIX,
-	PASSWORD_RESET_CODE_TTL_SECS
-} from '../vars';
+import { PASSWORD_RESET_KEY_PREFIX } from '../vars';
 
 export default class TestPasswordResetCodeController extends BaseController {
 	protected async executeImpl(req: e.Request, res: e.Response): Promise<void> {
@@ -19,12 +16,13 @@ export default class TestPasswordResetCodeController extends BaseController {
 		const code: unknown = req.query.code;
 		if (typeof code !== 'string') return this.missingParams(res, 'code');
 
-		// 2) to hold manual decode results.
+		// 2) to hold manual decode results if not in cache.
 		let codePayload: PasswordResetPayload | undefined;
 
 		// 3) check cache for code.
 		const cache: RedisManager = new RedisManager(PASSWORD_RESET_KEY_PREFIX);
-		const cachedValue: string | null = await cache.getKey(code);
+		// const cachedValue: string | null = await cache.getKey(code);
+		const cachedValue = null;
 
 		if (cachedValue) {
 			if (Number(cachedValue)) {
@@ -36,34 +34,48 @@ export default class TestPasswordResetCodeController extends BaseController {
 				else this.fail(res, new Error());
 			} else {
 				// 3) if in cache and is not number the code is valid.
-				return this.ok(res);
+				this.ok(res);
 			}
 
 			return;
 		} else {
+			// 3) if not in cache then attempt a manual decoding.
 			try {
 				codePayload = await new PasswordResetEmailer().decode(code);
 			} catch (error) {
-				if (error instanceof jwt.TokenExpiredError) this.gone(res);
-				else if (error instanceof jwt.JsonWebTokenError) this.notFound(res);
-				else this.fail(res, error);
+				let errorToCache: string | undefined;
+				if (error instanceof jwt.TokenExpiredError) {
+					errorToCache = '409';
+					this.gone(res);
+				} else if (error instanceof jwt.JsonWebTokenError) {
+					errorToCache = '404';
+					this.notFound(res);
+				} else {
+					errorToCache = '500';
+					this.fail(res, error);
+				}
+
+				await cache.setKey(code, errorToCache, 60 * 5);
 				return;
 			}
 		}
 
-		// 5) attempt to locate the user that matches the id in the code
+		// 4) attempt to locate the user that matches the id in the code
 		// payload. if doesn't exist return 404.
 		const user: User = new User();
 		await user.initByID(codePayload._id);
 		if (!user.exists()) {
 			this.notFound(res);
-			cache.setKey(code, '404', 60 * 5);
+			await cache.setKey(code, '404', 60 * 5);
 			return;
 		}
 
-		//6) respond with 200 if good.
+		//5) respond with 200 if all good.
 		this.ok(res);
 
+		// we can calculate that the amount of time that the
+		// code can be cached as being at most 15 mins but never
+		// more than its remaining lifespan.
 		const ttl: number = Math.min(
 			Math.ceil(codePayload.exp - new Date().getTime() / 1000),
 			60 * 15

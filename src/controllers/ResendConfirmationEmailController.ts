@@ -1,14 +1,15 @@
 import * as e from 'express';
 
-import RedisManager from '../utils/RedisManager';
-import ConfirmationEmailer from '../utils/ConfirmationEmailer';
-import User from '../utils/User';
+import RedisManager from '../util/RedisManager';
+import ConfirmationEmailer from '../util/ConfirmationEmailer';
+import User from '../util/User';
 
 import BaseController from './BaseController';
 
 import {
 	EMAIL_CONFIRMATION_KEY_PREFIX,
-	EMAIL_CONFIRMATION_EMAIL_TIMEOUT_SECS
+	EMAIL_CONFIRMATION_EMAIL_TIMEOUT_SECS,
+	EMAIL_CONFIRMATION_CODE_TTL_SECS
 } from '../vars';
 
 export default class ResendConfirmationEmailController extends BaseController {
@@ -17,9 +18,12 @@ export default class ResendConfirmationEmailController extends BaseController {
 		const email: string | undefined = req.body.email;
 		if (!email) return this.missingParams(res, 'email');
 
-		// 2) if email is a key in cache, then email was sent recently, return 429.
+		// 2) if email is a key in cache, then email was sent too recently, return 429.
 		const cache: RedisManager = new RedisManager(EMAIL_CONFIRMATION_KEY_PREFIX);
-		if (await cache.getKey(email)) return this.tooManyRequests(res);
+		const cachedVal: string | null = await cache.getKey(email);
+		if (cachedVal) {
+			return this.tooManyRequests(res, `Last sent at: ${new Date(cachedVal)}`);
+		}
 
 		// 2) try to locate the user via the supplied email parameter.
 		const user: User = new User();

@@ -1,8 +1,8 @@
 import * as e from 'express';
 
-import ConfirmationEmailer from '../utils/ConfirmationEmailer';
-import User from '../utils/User';
-import RedisManager from '../utils/RedisManager';
+import ConfirmationEmailer from '../util/ConfirmationEmailer';
+import User from '../util/User';
+import RedisManager from '../util/RedisManager';
 
 import { CreateUserInput } from '../types/User';
 
@@ -19,7 +19,7 @@ export default class SignUpController extends BaseController {
 		// 2) attempt to create user with request parameters.
 		try {
 			await newUser.create(newUserData);
-			if (!newUser.exists()) throw new Error('Problem Creating User');
+			if (!newUser.exists()) throw new Error('Problem creating user');
 		} catch (error) {
 			if (!error.response || error.response.status !== 400)
 				return this.fail(res, error);

@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import RabbitMQAuthMessenger from '../utils/RabbitMQAuthMessenger';
+import RabbitMQAuthMessenger from '../util/RabbitMQAuthMessenger';
 
 import {
 	UserFields,
@@ -41,6 +41,7 @@ export default class User {
 
 	public async create(newUserData: CreateUserInput): Promise<void> {
 		const config: AuthorizedConfig = await this.generateAuthorizedConfig();
+
 		return axios
 			.post(USERS_API, newUserData, config)
 			.then((response: CreateUserResponse) => {
@@ -65,7 +66,7 @@ export default class User {
 
 	public async initByEmail(email: string): Promise<void> {
 		const config: AuthorizedConfig = await this.generateAuthorizedConfig();
-		const queryURL = `${USERS_API}?email=${email}&limit=1`;
+		const queryURL = `${USERS_API}?email=${encodeURIComponent(email)}&limit=1`;
 
 		return axios.get(queryURL, config).then((response: QueryUsersResponse) => {
 			const queryResults: UserFields[] = response.data.query_results;

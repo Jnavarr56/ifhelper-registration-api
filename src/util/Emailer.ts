@@ -3,7 +3,7 @@ import * as ndm from 'nodemailer';
 import * as jwt from 'jsonwebtoken';
 import { Base64 } from 'js-base64';
 
-import User from '../utils/User';
+import User from '../util/User';
 
 import { CodePayload } from '../types/Token';
 

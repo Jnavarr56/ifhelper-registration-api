@@ -1,8 +1,8 @@
 import * as e from 'express';
 
-import PasswordResetEmailer from '../utils/PasswordResetEmailer';
-import User from '../utils/User';
-import RedisManager from '../utils/RedisManager';
+import PasswordResetEmailer from '../util/PasswordResetEmailer';
+import User from '../util/User';
+import RedisManager from '../util/RedisManager';
 
 import BaseController from './BaseController';
 
