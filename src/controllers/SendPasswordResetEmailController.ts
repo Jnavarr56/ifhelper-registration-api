@@ -20,7 +20,10 @@ export default class SendPasswordResetEmailController extends BaseController {
 		// 2) search the cache for this email. if present indicates email was
 		// sent recently.
 		const cache: RedisManager = new RedisManager(PASSWORD_RESET_KEY_PREFIX);
-		if (await cache.getKey(email)) return this.tooManyRequests(res);
+		const cachedVal: string | null = await cache.getKey(email);
+		if (cachedVal) {
+			return this.tooManyRequests(res, `Last sent at: ${new Date(cachedVal)}`);
+		}
 
 		// 3) try to locate the user via the supplied email parameter.
 		const user: User = new User();

@@ -29,7 +29,6 @@ export default class TestPasswordResetCodeController extends BaseController {
 				// 3) if in cache and is number then map to an
 				// http code response and send.
 				if (cachedValue === '404') this.notFound(res);
-				else if (cachedValue === '409') this.conflict(res);
 				else if (cachedValue === '410') this.gone(res);
 				else this.fail(res, new Error());
 			} else {
@@ -45,7 +44,7 @@ export default class TestPasswordResetCodeController extends BaseController {
 			} catch (error) {
 				let errorToCache: string | undefined;
 				if (error instanceof jwt.TokenExpiredError) {
-					errorToCache = '409';
+					errorToCache = '410';
 					this.gone(res);
 				} else if (error instanceof jwt.JsonWebTokenError) {
 					errorToCache = '404';

@@ -55,7 +55,10 @@ export default class ResetPasswordController extends BaseController {
 				if (error instanceof jwt.TokenExpiredError) {
 					errorToCache = '410';
 					this.gone(res);
-				} else if (error instanceof jwt.JsonWebTokenError) {
+				} else if (
+					error instanceof jwt.JsonWebTokenError ||
+					error.message === 'Payload Not Of Password Reset Type'
+				) {
 					errorToCache = '404';
 					this.notFound(res);
 				} else {

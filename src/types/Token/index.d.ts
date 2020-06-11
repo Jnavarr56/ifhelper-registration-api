@@ -1,5 +1,6 @@
 export interface CodePayload {
 	_id: string;
+	email?: string;
 	type: string;
 }
 

@@ -66,7 +66,7 @@ export default abstract class BaseController {
 		BaseController.jsonErrorResponse(
 			res,
 			500,
-			errorCode || 'Could Not Process Credentials'
+			errorCode || 'Could not process credentials'
 		);
 	}
 
@@ -74,16 +74,16 @@ export default abstract class BaseController {
 		BaseController.jsonErrorResponse(
 			res,
 			401,
-			errorCode || 'Missing Authorization Bearer Token'
+			errorCode || 'Missing authorization bearer token'
 		);
 	}
 
 	public invalidToken(res: e.Response, errorCode?: string): void {
-		BaseController.jsonErrorResponse(res, 400, errorCode || 'Token Invalid');
+		BaseController.jsonErrorResponse(res, 400, errorCode || 'Token invalid');
 	}
 
 	public expiredToken(res: e.Response, errorCode?: string): void {
-		BaseController.jsonErrorResponse(res, 400, errorCode || 'Token Expired');
+		BaseController.jsonErrorResponse(res, 400, errorCode || 'Token expired');
 	}
 
 	public missingParams(res: e.Response, param: string): void;
@@ -95,7 +95,7 @@ export default abstract class BaseController {
 		BaseController.jsonErrorResponse(
 			res,
 			400,
-			'Missing Required Parameters',
+			'Missing required parameters',
 			error
 		);
 	}
@@ -104,7 +104,7 @@ export default abstract class BaseController {
 		res: e.Response,
 		params?: { [key: string]: string }
 	): void {
-		BaseController.jsonErrorResponse(res, 400, 'Invalid Parameters', params);
+		BaseController.jsonErrorResponse(res, 400, 'Invalid parameters', params);
 	}
 
 	public unauthorized(res: e.Response, errorCode?: string): void {

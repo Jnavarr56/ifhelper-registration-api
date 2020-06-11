@@ -5,6 +5,8 @@ import ConfirmEmailController from './controllers/ConfirmEmailController';
 import SendPasswordResetEmailController from './controllers/SendPasswordResetEmailController';
 import TestPasswordResetCodeController from './controllers/TestPasswordResetCodeController';
 import ResetPasswordController from './controllers/ResetPasswordController';
+import SendUpdateEmailConfirmationController from './controllers/SendUpdateEmailConfirmationController';
+import UpdateEmailController from './controllers/UpdateEmailController';
 
 const router: e.Router = e.Router();
 
@@ -30,6 +32,16 @@ router.get('/test-password-reset-code', (req: e.Request, res: e.Response) =>
 
 router.post('/reset-password', (req: e.Request, res: e.Response) =>
 	new ResetPasswordController().execute(req, res)
+);
+
+router.post(
+	'/send-update-email-confirmation',
+	(req: e.Request, res: e.Response) =>
+		new SendUpdateEmailConfirmationController().execute(req, res)
+);
+
+router.post('/update-email', (req: e.Request, res: e.Response) =>
+	new UpdateEmailController().execute(req, res)
 );
 
 export default router;

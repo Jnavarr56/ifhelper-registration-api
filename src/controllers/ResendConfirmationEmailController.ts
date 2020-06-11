@@ -8,8 +8,7 @@ import BaseController from './BaseController';
 
 import {
 	EMAIL_CONFIRMATION_KEY_PREFIX,
-	EMAIL_CONFIRMATION_EMAIL_TIMEOUT_SECS,
-	EMAIL_CONFIRMATION_CODE_TTL_SECS
+	EMAIL_CONFIRMATION_EMAIL_TIMEOUT_SECS
 } from '../vars';
 
 export default class ResendConfirmationEmailController extends BaseController {

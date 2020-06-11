@@ -5,6 +5,7 @@ import { CodePayload, ConfirmationCodePayload } from '../types/Token';
 import { SendMailResponse } from '../types/Email';
 
 import generateConfirmationEmailHTML from '../email-templates/Confirmation';
+import generateUpdateConfirmationEmailHTML from '../email-templates/UpdateConfirmation';
 import User from './User';
 import Emailer from './Emailer';
 
@@ -28,17 +29,18 @@ export default class ConfirmationEmailer extends Emailer {
 		return secret;
 	}
 
-	public async sendEmail(user: User): Promise<string> {
+	public async sendEmail(user: User, newEmail?: string): Promise<string> {
 		const userFields: UserFields = user.getFields();
 
 		const userID: string = userFields._id;
 		const userFirstName: string = userFields.first_name;
-		const userEmail: string = userFields.email;
+		const userEmail: string = newEmail || userFields.email;
 
 		const payload: CodePayload = {
 			_id: userID,
 			type: 'CONFIRMATION'
 		};
+		if (newEmail) payload.email = newEmail;
 		const secret: string = this.getSecret();
 
 		const code: string = await ConfirmationEmailer.generateBase64EncodedJWT(
@@ -48,10 +50,9 @@ export default class ConfirmationEmailer extends Emailer {
 		);
 
 		const confirmationCodeURL: string = this.generateURL(code);
-		const personalizedHTML: string = generateConfirmationEmailHTML(
-			userFirstName,
-			confirmationCodeURL
-		);
+		const personalizedHTML: string = newEmail
+			? generateUpdateConfirmationEmailHTML(code)
+			: generateConfirmationEmailHTML(userFirstName, confirmationCodeURL);
 
 		return new Promise((resolve, reject) => {
 			ConfirmationEmailer.transporter.sendMail(
@@ -61,9 +62,9 @@ export default class ConfirmationEmailer extends Emailer {
 					html: personalizedHTML
 				},
 				(error: Error | null, info: SendMailResponse) => {
-					if (error) reject(error);
+					if (error) reject(new Error('Problem Sending Email'));
 					if (info.accepted.includes(userEmail)) resolve(code);
-					reject(new Error('No Acccepted Receipt'));
+					reject(new Error('No Accepted Receipt'));
 				}
 			);
 		});
@@ -72,11 +73,12 @@ export default class ConfirmationEmailer extends Emailer {
 	private isConfirmationCodePayload(
 		val: CodePayload
 	): val is ConfirmationCodePayload {
-		return (
-			val.type === 'CONFIRMATION' &&
+		return val.type === 'CONFIRMATION' &&
 			typeof (val as ConfirmationCodePayload).exp === 'number' &&
-			typeof (val as ConfirmationCodePayload).iat === 'number'
-		);
+			typeof (val as ConfirmationCodePayload).iat === 'number' &&
+			(val as ConfirmationCodePayload).email === undefined
+			? true
+			: typeof (val as ConfirmationCodePayload).email === 'string';
 	}
 	public async decode(code: string): Promise<ConfirmationCodePayload> {
 		const secret: string = this.getSecret();
