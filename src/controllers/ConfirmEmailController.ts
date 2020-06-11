@@ -36,7 +36,6 @@ export default class ConfirmEmailController extends BaseController {
 			// it represents an error code. respond with that code.
 			if (Number(cachedValue)) {
 				if (cachedValue === '404') this.notFound(res);
-				else if (cachedValue === '409') this.conflict(res);
 				else if (cachedValue === '410') this.gone(res);
 				else this.fail(res, new Error());
 				return;
@@ -83,9 +82,9 @@ export default class ConfirmEmailController extends BaseController {
 			cache.setKey(code, '404', 60 * 5);
 			return;
 		} else if (user.isConfirmed()) {
-			// 7) return conflict if user exists but is already confirmed.
+			// 7) return gone if user exists but is already confirmed.
 			this.conflict(res);
-			cache.setKey(code, '409', 60 * 5);
+			cache.setKey(code, '410', 60 * 5);
 			return;
 		}
 

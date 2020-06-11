@@ -74,8 +74,8 @@ Example:
     error_code: Invalid Parameters
     error: {
     	invalid_parameters: {
-                first_name: "must be string",
-		        last_name: "must be string"
+            first_name: "must be string",
+            last_name: "must be string"
         }
     }
 }
@@ -151,15 +151,13 @@ All are prefixed with the value of the PATHNAME variable in the vars.ts file. It
 - **Responses**:
   - 200:
     - user email confirmed.
-    - ```
-        {
-            first_name: USER_FIRST_NAME
-        }
-      ```
+      - ```
+          {
+              first_name: USER_FIRST_NAME
+          }
+        ```
   - 404:
     - code is invalid or user does not exist anymore.
-  - 409:
-    - user email already confirmed.
   - 410:
     - code has expired or has already been used.
 
@@ -281,6 +279,26 @@ All are prefixed with the value of the PATHNAME variable in the vars.ts file. It
                 error_code: "Last sent at DATE_STRING"
          	}
         ```
+
+##### POST /update-email
+
+- **Requires Access Token**: No
+- **Behavior**:
+  - Updates user passord.
+- **Required Params**:
+  - _code_: string
+- **Responses**:
+  - 200:
+    - user email confirmed.
+      - ```
+          {
+              first_name: USER_FIRST_NAME
+          }
+        ```
+  - 404:
+    - code is invalid or user does not exist anymore.
+  - 410:
+    - code has expired or has already been used.
 
 ### Running
 

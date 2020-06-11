@@ -39,7 +39,6 @@ export default class UpdateEmailController extends BaseController {
 			// 	// it represents an error code. respond with that code.
 			if (Number(cachedValue)) {
 				if (cachedValue === '404') this.notFound(res);
-				else if (cachedValue === '409') this.conflict(res);
 				else if (cachedValue === '410') this.gone(res);
 				else this.fail(res, new Error());
 				return;
