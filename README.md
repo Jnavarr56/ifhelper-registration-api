@@ -1,14 +1,14 @@
 # Registration Service API
 
-### Intro
-
 ---
+
+### Intro
 
 This is a microservice API that I created as part of a larger implmentation of a microservices application structure using Node.js (Typescript). Its meant to exist alongside the other services in this implementation, which is orchestrated using Docker-Compose and is contained in a submodules repo.
 
-### Made With/Relies On
-
 ---
+
+### Made With/Relies On
 
 - <a href="https://nodejs.org/en/"><img src="https://github.com/nodejs/nodejs.org/blob/master/static/images/logos/nodejs.png?raw=true" alt="Node.js" height=50/></a>
 - <a href="https://www.typescriptlang.org/"><img src="https://github.com/remojansen/logo.ts/raw/master/ts.png" height=50/></a>
@@ -19,9 +19,9 @@ This is a microservice API that I created as part of a larger implmentation of a
 - <a href="hhttps://redis.io/"><img height=50 src="https://upload.wikimedia.org/wikipedia/en/thumb/6/6b/Redis_Logo.svg/1200px-Redis_Logo.svg.png" alt="Redis"/></a>
 - <a href="https://www.rabbitmq.com/"><img height=25 src="https://www.rabbitmq.com/img/RabbitMQ-logo.svg" alt="RabbitMQ"/></a>
 
-### Scope/Functionality
-
 ---
+
+### Scope/Functionality
 
 1. Signing up new users.
 2. Sending confirmation emails to newly signed up users.
@@ -31,9 +31,9 @@ This is a microservice API that I created as part of a larger implmentation of a
 6. Sending email update emails to existing users.
 7. Updating user emails.
 
-### Services Communicated With/Protocols
-
 ---
+
+### Services Communicated With/Protocols
 
 1. **AMPQ**
 
@@ -47,9 +47,9 @@ This is a microservice API that I created as part of a larger implmentation of a
    - Sends requests to the users resource microservice to create and update users.
    - For the one route requiring authentication via an access token (/send-update-email-confirmation) forward the credentials to the token processign microservice.
 
-### Required Environment Variables
-
 ---
+
+### Required Environment Variables
 
 1. **EMAIL_CONFIRMATION_JWT_SECRET_KEY**
    - For signing and verifiying the JWT that is used as an email confirmation code sent in an email.
@@ -61,9 +61,9 @@ This is a microservice API that I created as part of a larger implmentation of a
    - For the Gmail account that the application will be using to send emails to users.
    - This account must have access to "less secure apps" turned on.
 
-### Error Responses
-
 ---
+
+### Error Responses
 
 All error responses (4xx, 5xx) come in the format of a JSON object containing an `error_code` which may be a string describing the error and possibly an `error` property which may be an object or string containing further information on the error.
 
@@ -81,9 +81,9 @@ Example:
 }
 ```
 
-### Routes
-
 ---
+
+### Routes
 
 All are prefixed with the value of the PATHNAME variable in the vars.ts file. It currently looks like this.
 `export const PATHNAME = "/api/registration"`
@@ -300,8 +300,8 @@ All are prefixed with the value of the PATHNAME variable in the vars.ts file. It
   - 410:
     - code has expired or has already been used.
 
-### Running
-
 ---
+
+### Running
 
 This this repo is a submodule in a repo that contains a Docker-Compose file that when run will activate the commands in the Dockerfile in this repo.
