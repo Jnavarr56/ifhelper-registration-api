@@ -14,14 +14,14 @@ For an explanation of how this fits into the archetecture of the rest of the app
 
 - I tried to follow a single-responsibility/OOP paradigm as much as possible as well as abstract some logic into parent classes.
 
-  - _see_: ./util/Emailer.ts, ./util/ConfirmationEmailer.ts., ./util/PasswordResetEmailer.ts
+  - _see_: [./util/Emailer.ts](./util/Emailer.ts), [./util/ConfirmationEmailer.ts](./util/ConfirmationEmailer.ts), [./util/PasswordResetEmailer.ts](./util/PasswordResetEmailer.ts)
 
 - I created static wrappers around the RabbitMQ and Redis library clients that allow me to await the initializing of the connection to each respective service before starting the http server as well as reuse those same 2 client connections (kind of like a Singleton) throughout the application instead of opening multiple connections
 
-  - _see_: ./util/RedisManager.ts, ./util/RedisInitializer.ts, ./util/RabbitMQAuthMessenger.ts
+  - _see_: [./util/RedisManager.ts](./util/RedisManager.ts), [./util/RedisClientInitializer.ts](./util/RedisClientInitializer.ts), [./util/RabbitMQAuthMessenger.ts](./util/RabbitMQAuthMessenger.ts)
 
 - I created an api client class that serves as an interface to the users resource microservice and exposes different methods that correspond to different HTTP requests and automatically adds system access tokens to the headers of each request by using the RabbitMQAuthMessenger to request those tokens (RPC style) beforehand.
-  - _see_: ./util/User.ts
+  - _see_: [./util/User.ts](./util/User.ts)
 
 ---
 
